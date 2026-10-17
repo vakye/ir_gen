@@ -71,6 +71,13 @@ IRG_FUNC irg_inst_id irg_Mul(irg_inst_id Left, irg_inst_id Right);
 IRG_FUNC irg_inst_id irg_Div(irg_inst_id Left, irg_inst_id Right);
 IRG_FUNC irg_inst_id irg_Mod(irg_inst_id Left, irg_inst_id Right);
 
+IRG_FUNC irg_inst_id irg_Equal          (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_NotEqual       (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_Less           (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_LessEqual      (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_Greater        (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_GreaterEqual   (irg_inst_id Left, irg_inst_id Right);
+
 ///////////////////////////////////////////////////////////
 // NOTE(vak): Generation
 ///////////////////////////////////////////////////////////
@@ -104,6 +111,13 @@ typedef enum
     IRG_INST_KIND_MUL,
     IRG_INST_KIND_DIV,
     IRG_INST_KIND_MOD,
+
+    IRG_INST_KIND_EQUAL,
+    IRG_INST_KIND_NOT_EQUAL,
+    IRG_INST_KIND_LESS,
+    IRG_INST_KIND_LESS_EQUAL,
+    IRG_INST_KIND_GREATER,
+    IRG_INST_KIND_GREATER_EQUAL,
 
     IRG_INST_KIND_COUNT,
 } irg_inst_kind;
@@ -148,6 +162,34 @@ IRG_FUNC irg_inst_id irg_MakeInst(irg_inst_kind Kind)
     return (InstID);
 }
 
+IRG_FUNC irg_inst_id irg_MakeUnary(
+    irg_inst_kind Kind,
+    irg_inst_id Operand
+)
+{
+    irg_inst_id InstID = irg_MakeInst(Kind);
+    irg_inst* Inst = irg_GetInst(InstID);
+
+    Inst->Operand = Operand;
+
+    return (InstID);
+}
+
+IRG_FUNC irg_inst_id irg_MakeBinary(
+    irg_inst_kind Kind,
+    irg_inst_id Left,
+    irg_inst_id Right
+)
+{
+    irg_inst_id InstID = irg_MakeInst(Kind);
+    irg_inst* Inst = irg_GetInst(InstID);
+
+    Inst->Left = Left;
+    Inst->Right = Right;
+
+    return (InstID);
+}
+
 IRG_FUNC irg_inst_id irg_Integer(irg_usize Value)
 {
     irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_INTEGER);
@@ -160,67 +202,62 @@ IRG_FUNC irg_inst_id irg_Integer(irg_usize Value)
 
 IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_NEGATE);
-    irg_inst* Inst = irg_GetInst(InstID);
-
-    Inst->Operand = Operand;
-
-    return (InstID);
+    return irg_MakeUnary(IRG_INST_KIND_NEGATE, Operand);
 }
 
 IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_ADD);
-    irg_inst* Inst = irg_GetInst(InstID);
-
-    Inst->Left = Left;
-    Inst->Right = Right;
-
-    return (InstID);
+    return irg_MakeBinary(IRG_INST_KIND_ADD, Left, Right);
 }
 
 IRG_FUNC irg_inst_id irg_Sub(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_SUB);
-    irg_inst* Inst = irg_GetInst(InstID);
-
-    Inst->Left = Left;
-    Inst->Right = Right;
-
-    return (InstID);
+    return irg_MakeBinary(IRG_INST_KIND_SUB, Left, Right);
 }
 
 IRG_FUNC irg_inst_id irg_Mul(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_MUL);
-    irg_inst* Inst = irg_GetInst(InstID);
-
-    Inst->Left = Left;
-    Inst->Right = Right;
-
-    return (InstID);
+    return irg_MakeBinary(IRG_INST_KIND_MUL, Left, Right);
 }
 
 IRG_FUNC irg_inst_id irg_Div(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_DIV);
-    irg_inst* Inst = irg_GetInst(InstID);
-
-    Inst->Left = Left;
-    Inst->Right = Right;
-
-    return (InstID);
+    return irg_MakeBinary(IRG_INST_KIND_DIV, Left, Right);
 }
 
 IRG_FUNC irg_inst_id irg_Mod(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_MOD);
-    irg_inst* Inst = irg_GetInst(InstID);
+    return irg_MakeBinary(IRG_INST_KIND_MOD, Left, Right);
+}
 
-    Inst->Left = Left;
-    Inst->Right = Right;
+IRG_FUNC irg_inst_id irg_Equal(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_EQUAL, Left, Right);
+}
 
-    return (InstID);
+IRG_FUNC irg_inst_id irg_NotEqual(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_NOT_EQUAL, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_Less(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_LESS, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_LessEqual(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_LESS_EQUAL, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_Greater(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_GREATER, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_GreaterEqual(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_GREATER_EQUAL, Left, Right);
 }
 
 ///////////////////////////////////////////////////////////
@@ -354,6 +391,84 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             // 48 f7 f9     idiv rcx
             // 48 8b c2     mov rax, rdx
             irg_U64(0xc28b48f9f7489948);
+        } break;
+
+        case IRG_INST_KIND_EQUAL:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 3b c1     cmp rax, rcx
+            // 0f 94 c0     setz al
+            // 83 e0 01     and eax, 0x1
+
+            irg_U64(0xe083c0940fc13b48);
+            irg_U8 (0x01);
+        } break;
+
+        case IRG_INST_KIND_NOT_EQUAL:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 3b c1     cmp rax, rcx
+            // 0f 95 c0     setnz al
+            // 83 e0 01     and eax, 0x1
+
+            irg_U64(0xe083c0950fc13b48);
+            irg_U8 (0x01);
+        } break;
+
+        case IRG_INST_KIND_LESS:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 3b c1     cmp rax, rcx
+            // 0f 9c c0     setl al
+            // 83 e0 01     and eax, 0x1
+
+            irg_U64(0xe083c09c0fc13b48);
+            irg_U8 (0x01);
+        } break;
+
+        case IRG_INST_KIND_LESS_EQUAL:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 3b c1     cmp rax, rcx
+            // 0f 9e c0     setle al
+            // 83 e0 01     and eax, 0x1
+
+            irg_U64(0xe083c09e0fc13b48);
+            irg_U8 (0x01);
+        } break;
+
+        case IRG_INST_KIND_GREATER:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 3b c1     cmp rax, rcx
+            // 0f 9f c0     setg al
+            // 83 e0 01     and eax, 0x1
+
+            irg_U64(0xe083c09f0fc13b48);
+            irg_U8 (0x01);
+        } break;
+
+        case IRG_INST_KIND_GREATER_EQUAL:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 3b c1     cmp rax, rcx
+            // 0f 9d c0     setge al
+            // 83 e0 01     and eax, 0x1
+
+            irg_U64(0xe083c09d0fc13b48);
+            irg_U8 (0x01);
         } break;
     }
 }
