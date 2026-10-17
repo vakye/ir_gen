@@ -53,6 +53,9 @@ typedef irg_u32 irg_b32;
 
 #define IRG_ASSERT(Expression) if (!(Expression)) IRG_INVALID_CODE_PATH
 
+#define IRG_MIN(A, B) ((A) < (B) ? (A) : (B))
+#define IRG_MAX(A, B) ((A) > (B) ? (A) : (B))
+
 ///////////////////////////////////////////////////////////
 // NOTE(vak): IR
 ///////////////////////////////////////////////////////////
@@ -60,6 +63,15 @@ typedef irg_u32 irg_b32;
 typedef irg_u32 irg_inst_id;
 
 #define IRG_NIL_INST_ID ((irg_inst_id)(0))
+
+IRG_FUNC irg_inst_id irg_Declare(void);
+IRG_FUNC irg_inst_id irg_AddressOf(irg_inst_id Operand);
+IRG_FUNC irg_inst_id irg_Load(irg_inst_id Operand);
+IRG_FUNC irg_inst_id irg_Store(irg_inst_id Left, irg_inst_id Right);
+
+IRG_FUNC irg_inst_id irg_BeginBlock(void);
+IRG_FUNC void irg_PushBlock(irg_inst_id InstID);
+IRG_FUNC void irg_EndBlock(void);
 
 IRG_FUNC irg_inst_id irg_Integer(irg_usize Value);
 
@@ -112,6 +124,13 @@ typedef enum
 {
     IRG_INST_KIND_NIL = 0,
 
+    IRG_INST_KIND_DECLARE,
+    IRG_INST_KIND_ADDRESS_OF,
+    IRG_INST_KIND_LOAD,
+    IRG_INST_KIND_STORE,
+
+    IRG_INST_KIND_BLOCK,
+
     IRG_INST_KIND_INTEGER,
 
     IRG_INST_KIND_NEGATE,
@@ -136,13 +155,15 @@ typedef enum
     IRG_INST_KIND_BITWISE_AND,
     IRG_INST_KIND_BITWISE_OR,
     IRG_INST_KIND_BITWISE_XOR,
-
-    IRG_INST_KIND_COUNT,
 } irg_inst_kind;
 
 typedef struct
 {
     irg_inst_kind Kind;
+    irg_inst_id   Next;
+
+    // NOTE(vak): Declare
+        irg_usize StackOffset; // NOTE(vak): Written by code generator
 
     // NOTE(vak): Integer
         irg_usize IntegerValue;
@@ -153,11 +174,18 @@ typedef struct
     // NOTE(vak): Binary
         irg_inst_id Left;
         irg_inst_id Right;
+
+    // NOTE(vak): Block
+        irg_inst_id Parent; // NOTE(vak): Parent block
+        irg_inst_id First;
+        irg_inst_id Last;
 } irg_inst;
 
 // TODO(vak): Custom allocator
+
 static irg_inst irg_Insts[4096] = {0};
 static irg_usize irg_InstCount = 1;
+static irg_inst_id irg_CurrentBlockID = 0;
 
 IRG_FUNC irg_inst* irg_GetInst(irg_inst_id InstID)
 {
@@ -206,6 +234,67 @@ IRG_FUNC irg_inst_id irg_MakeBinary(
     Inst->Right = Right;
 
     return (InstID);
+}
+
+IRG_FUNC irg_inst_id irg_Declare(void)
+{
+    return irg_MakeInst(IRG_INST_KIND_DECLARE);
+}
+
+IRG_FUNC irg_inst_id irg_AddressOf(irg_inst_id Operand)
+{
+    return irg_MakeUnary(IRG_INST_KIND_ADDRESS_OF, Operand);
+}
+
+IRG_FUNC irg_inst_id irg_Load(irg_inst_id Operand)
+{
+    return irg_MakeUnary(IRG_INST_KIND_LOAD, Operand);
+}
+
+IRG_FUNC irg_inst_id irg_Store(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_STORE, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_BeginBlock(void)
+{
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_BLOCK);
+    irg_inst* BlockInst = irg_GetInst(InstID);
+
+    BlockInst->Parent = irg_CurrentBlockID;
+    irg_CurrentBlockID = InstID;
+
+    return (InstID);
+}
+
+IRG_FUNC void irg_PushBlock(irg_inst_id InstID)
+{
+    if (irg_CurrentBlockID)
+    {
+        irg_inst* BlockInst = irg_GetInst(irg_CurrentBlockID);
+
+        if (!BlockInst->First)
+        {
+            BlockInst->First = InstID;
+            BlockInst->Last = InstID;
+        }
+        else
+        {
+            irg_inst* LastInst = irg_GetInst(BlockInst->Last);
+
+            LastInst->Next = InstID;
+            BlockInst->Last = InstID;
+        }
+    }
+}
+
+IRG_FUNC void irg_EndBlock(void)
+{
+    if (irg_CurrentBlockID)
+    {
+        irg_inst* BlockInst = irg_GetInst(irg_CurrentBlockID);
+        irg_CurrentBlockID = BlockInst->Parent;
+    }
 }
 
 IRG_FUNC irg_inst_id irg_Integer(irg_usize Value)
@@ -373,7 +462,54 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
 
     switch (Inst->Kind)
     {
-        default: IRG_ASSERT(!"Unimplemented inst kind"); break;
+        case IRG_INST_KIND_NIL: break;
+        case IRG_INST_KIND_DECLARE: break;
+
+        case IRG_INST_KIND_ADDRESS_OF:
+        {
+            irg_inst* Operand = irg_GetInst(Inst->Operand);
+            IRG_ASSERT(Operand->Kind == IRG_INST_KIND_DECLARE);
+
+            irg_ssize Offset = -(irg_ssize)Operand->StackOffset;
+            IRG_ASSERT(Offset >= -2147483648);
+
+            // NOTE(vak):
+            // 48 8d 85 Imm32   lea rax, [rbp + Imm32]
+
+            irg_U24(0x858d48);
+            irg_U32((irg_u32)(Offset));
+        } break;
+
+        case IRG_INST_KIND_LOAD:
+        {
+            irg_x64_Unary(Inst->Operand);
+
+            // NOTE(vak):
+            // 48 8b 00     mov rax, [rax]
+            irg_U24(0x008b48);
+        } break;
+
+        case IRG_INST_KIND_STORE:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 89 08     mov [rax], rcx
+            irg_U24(0x088948);
+        } break;
+
+        case IRG_INST_KIND_BLOCK:
+        {
+            irg_inst_id ID = Inst->First;
+
+            while (ID)
+            {
+                irg_x64_Inst(ID);
+
+                irg_inst* CurrentInst = irg_GetInst(ID);
+                ID = CurrentInst->Next;
+            }
+        } break;
 
         case IRG_INST_KIND_INTEGER:
         {
@@ -575,11 +711,113 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
     }
 }
 
+typedef struct
+{
+    irg_usize Offset;
+    irg_usize Size;
+} irg_x64_stack;
+
+IRG_FUNC void irg_x64_AnalyzeStack(irg_inst_id InstID, irg_x64_stack* Stack)
+{
+    if (InstID == 0)
+        return;
+
+    irg_inst* Inst = irg_GetInst(InstID);
+
+    switch (Inst->Kind)
+    {
+        case IRG_INST_KIND_NIL: break;
+        case IRG_INST_KIND_INTEGER: break;
+
+        case IRG_INST_KIND_DECLARE:
+        {
+            if (!Inst->StackOffset)
+            {
+                Stack->Offset += 8;
+                Stack->Size = IRG_MAX(Stack->Offset, Stack->Size);
+                Inst->StackOffset = Stack->Offset;
+            }
+        } break;
+
+        case IRG_INST_KIND_BLOCK:
+        {
+            irg_usize OldOffset = Stack->Offset;
+
+            irg_inst_id ID = Inst->First;
+
+            while (ID)
+            {
+                irg_x64_AnalyzeStack(ID, Stack);
+
+                irg_inst* CurrentInst = irg_GetInst(ID);
+                ID = CurrentInst->Next;
+            }
+
+            Stack->Offset = OldOffset;
+        } break;
+
+        case IRG_INST_KIND_ADDRESS_OF:
+        case IRG_INST_KIND_LOAD:
+        case IRG_INST_KIND_NEGATE:
+        case IRG_INST_KIND_BITWISE_NOT:
+        {
+            irg_x64_AnalyzeStack(Inst->Operand, Stack);
+        } break;
+
+        case IRG_INST_KIND_ADD:
+        case IRG_INST_KIND_SUB:
+        case IRG_INST_KIND_MUL:
+        case IRG_INST_KIND_DIV:
+        case IRG_INST_KIND_MOD:
+        case IRG_INST_KIND_EQUAL:
+        case IRG_INST_KIND_NOT_EQUAL:
+        case IRG_INST_KIND_LESS:
+        case IRG_INST_KIND_LESS_EQUAL:
+        case IRG_INST_KIND_GREATER:
+        case IRG_INST_KIND_GREATER_EQUAL:
+        case IRG_INST_KIND_SHIFT_LEFT:
+        case IRG_INST_KIND_SHIFT_RIGHT:
+        case IRG_INST_KIND_BITWISE_AND:
+        case IRG_INST_KIND_BITWISE_OR:
+        case IRG_INST_KIND_BITWISE_XOR:
+        case IRG_INST_KIND_STORE:
+        {
+            irg_x64_AnalyzeStack(Inst->Left, Stack);
+            irg_x64_AnalyzeStack(Inst->Right, Stack);
+        } break;
+    }
+}
+
 IRG_FUNC irg_code irg_GenerateX64(irg_inst_id InstID)
 {
     irg_usize BeginOffset = irg_Writer.At;
 
-    irg_x64_Inst(InstID);
+    irg_x64_stack Stack = {0};
+    irg_x64_AnalyzeStack(InstID, &Stack);
+
+    IRG_ASSERT(Stack.Size <= 0x7fffffff);
+
+    if (Stack.Size)
+    {
+        // NOTE(vak):
+        // 55               push rbp
+        // 48 8b ec         mov rbp, rsp
+        // 48 81 ec Imm32   sub rsp, Imm32
+        irg_U56(0xec8148ec8b4855);
+        irg_U32(Stack.Size);
+    }
+
+    {
+        irg_x64_Inst(InstID);
+    }
+
+    if (Stack.Size)
+    {
+        // NOTE(vak):
+        // 48 8b e5         mov rsp, rbp
+        // 5d               pop rbp
+        irg_U32(0x5de58b48);
+    }
 
     // NOTE(vak):
     // c3 ret

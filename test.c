@@ -123,6 +123,30 @@ void Test(void)
         PerformTestCase(B, 0xefefefefefefefef);
         PerformTestCase(C, 0xffffffffffffffff);
     }
+
+    {
+        irg_inst_id Block = irg_BeginBlock();
+        {
+            irg_inst_id A = irg_Declare();
+            irg_inst_id B = irg_Declare();
+
+            irg_inst_id C = irg_Store(irg_AddressOf(A), irg_Integer(10));
+            irg_inst_id D = irg_Store(irg_AddressOf(B), irg_Integer(20));
+
+            irg_inst_id E = irg_Load(irg_AddressOf(A));
+            irg_inst_id F = irg_Load(irg_AddressOf(B));
+
+            irg_inst_id G = irg_Add(E, F);
+
+            irg_PushBlock(A); irg_PushBlock(B);
+            irg_PushBlock(C); irg_PushBlock(D);
+            irg_PushBlock(E); irg_PushBlock(F);
+            irg_PushBlock(G);
+        }
+        irg_EndBlock();
+
+        PerformTestCase(Block, 30);
+    }
 }
 
 #include "linux_base.c"
