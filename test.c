@@ -75,6 +75,14 @@ void Test(void)
         PerformTestCase(E, 1);
         PerformTestCase(G, 1);
     }
+
+    {
+        irg_inst_id A = irg_ShiftLeft   (irg_Integer(23), irg_Integer(10));
+        irg_inst_id B = irg_ShiftRight  (irg_Integer(124871248), irg_Integer(13));
+
+        PerformTestCase(A, 23552);
+        PerformTestCase(B, 15243);
+    }
 }
 
 #include "linux_base.c"

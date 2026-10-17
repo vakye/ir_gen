@@ -78,6 +78,9 @@ IRG_FUNC irg_inst_id irg_LessEqual      (irg_inst_id Left, irg_inst_id Right);
 IRG_FUNC irg_inst_id irg_Greater        (irg_inst_id Left, irg_inst_id Right);
 IRG_FUNC irg_inst_id irg_GreaterEqual   (irg_inst_id Left, irg_inst_id Right);
 
+IRG_FUNC irg_inst_id irg_ShiftLeft      (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_ShiftRight     (irg_inst_id Left, irg_inst_id Right);
+
 ///////////////////////////////////////////////////////////
 // NOTE(vak): Generation
 ///////////////////////////////////////////////////////////
@@ -105,7 +108,9 @@ typedef enum
     IRG_INST_KIND_NIL = 0,
 
     IRG_INST_KIND_INTEGER,
+
     IRG_INST_KIND_NEGATE,
+
     IRG_INST_KIND_ADD,
     IRG_INST_KIND_SUB,
     IRG_INST_KIND_MUL,
@@ -118,6 +123,9 @@ typedef enum
     IRG_INST_KIND_LESS_EQUAL,
     IRG_INST_KIND_GREATER,
     IRG_INST_KIND_GREATER_EQUAL,
+
+    IRG_INST_KIND_SHIFT_LEFT,
+    IRG_INST_KIND_SHIFT_RIGHT,
 
     IRG_INST_KIND_COUNT,
 } irg_inst_kind;
@@ -258,6 +266,16 @@ IRG_FUNC irg_inst_id irg_Greater(irg_inst_id Left, irg_inst_id Right)
 IRG_FUNC irg_inst_id irg_GreaterEqual(irg_inst_id Left, irg_inst_id Right)
 {
     return irg_MakeBinary(IRG_INST_KIND_GREATER_EQUAL, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_ShiftLeft(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_SHIFT_LEFT, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_ShiftRight(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_SHIFT_RIGHT, Left, Right);
 }
 
 ///////////////////////////////////////////////////////////
@@ -469,6 +487,24 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
 
             irg_U64(0xe083c09d0fc13b48);
             irg_U8 (0x01);
+        } break;
+
+        case IRG_INST_KIND_SHIFT_LEFT:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 d3 f0 shl rax, cl
+            irg_U24(0xf0d348);
+        } break;
+
+        case IRG_INST_KIND_SHIFT_RIGHT:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 d3 f8 sar rax, cl
+            irg_U24(0xf8d348);
         } break;
     }
 }
