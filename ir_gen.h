@@ -64,6 +64,7 @@ typedef irg_u32 irg_inst_id;
 IRG_FUNC irg_inst_id irg_Integer(irg_usize Value);
 
 IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand);
+IRG_FUNC irg_inst_id irg_BitwiseNot(irg_inst_id Operand);
 
 IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right);
 IRG_FUNC irg_inst_id irg_Sub(irg_inst_id Left, irg_inst_id Right);
@@ -80,6 +81,10 @@ IRG_FUNC irg_inst_id irg_GreaterEqual   (irg_inst_id Left, irg_inst_id Right);
 
 IRG_FUNC irg_inst_id irg_ShiftLeft      (irg_inst_id Left, irg_inst_id Right);
 IRG_FUNC irg_inst_id irg_ShiftRight     (irg_inst_id Left, irg_inst_id Right);
+
+IRG_FUNC irg_inst_id irg_BitwiseAnd     (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_BitwiseOr      (irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_BitwiseXor     (irg_inst_id Left, irg_inst_id Right);
 
 ///////////////////////////////////////////////////////////
 // NOTE(vak): Generation
@@ -110,6 +115,7 @@ typedef enum
     IRG_INST_KIND_INTEGER,
 
     IRG_INST_KIND_NEGATE,
+    IRG_INST_KIND_BITWISE_NOT,
 
     IRG_INST_KIND_ADD,
     IRG_INST_KIND_SUB,
@@ -126,6 +132,10 @@ typedef enum
 
     IRG_INST_KIND_SHIFT_LEFT,
     IRG_INST_KIND_SHIFT_RIGHT,
+
+    IRG_INST_KIND_BITWISE_AND,
+    IRG_INST_KIND_BITWISE_OR,
+    IRG_INST_KIND_BITWISE_XOR,
 
     IRG_INST_KIND_COUNT,
 } irg_inst_kind;
@@ -213,6 +223,11 @@ IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand)
     return irg_MakeUnary(IRG_INST_KIND_NEGATE, Operand);
 }
 
+IRG_FUNC irg_inst_id irg_BitwiseNot(irg_inst_id Operand)
+{
+    return irg_MakeUnary(IRG_INST_KIND_BITWISE_NOT, Operand);
+}
+
 IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right)
 {
     return irg_MakeBinary(IRG_INST_KIND_ADD, Left, Right);
@@ -276,6 +291,21 @@ IRG_FUNC irg_inst_id irg_ShiftLeft(irg_inst_id Left, irg_inst_id Right)
 IRG_FUNC irg_inst_id irg_ShiftRight(irg_inst_id Left, irg_inst_id Right)
 {
     return irg_MakeBinary(IRG_INST_KIND_SHIFT_RIGHT, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_BitwiseAnd(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_BITWISE_AND, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_BitwiseOr(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_BITWISE_OR, Left, Right);
+}
+
+IRG_FUNC irg_inst_id irg_BitwiseXor(irg_inst_id Left, irg_inst_id Right)
+{
+    return irg_MakeBinary(IRG_INST_KIND_BITWISE_XOR, Left, Right);
 }
 
 ///////////////////////////////////////////////////////////
@@ -361,6 +391,15 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             // NOTE(vak):
             // 48 f7 d8 neg rax
             irg_U24(0xd8f748);
+        } break;
+
+        case IRG_INST_KIND_BITWISE_NOT:
+        {
+            irg_x64_Unary(Inst->Operand);
+
+            // NOTE(vak):
+            // 48 f7 d0 not rax
+            irg_U24(0xd0f748);
         } break;
 
         case IRG_INST_KIND_ADD:
@@ -505,6 +544,33 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             // NOTE(vak):
             // 48 d3 f8 sar rax, cl
             irg_U24(0xf8d348);
+        } break;
+
+        case IRG_INST_KIND_BITWISE_AND:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 23 c1 and rax, rcx
+            irg_U24(0xc12348);
+        } break;
+
+        case IRG_INST_KIND_BITWISE_OR:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 0b c1 or rax, rcx
+            irg_U24(0xc10b48);
+        } break;
+
+        case IRG_INST_KIND_BITWISE_XOR:
+        {
+            irg_x64_Binary(Inst->Left, Inst->Right);
+
+            // NOTE(vak):
+            // 48 33 c1 xor rax, rcx
+            irg_U24(0xc13348);
         } break;
     }
 }
