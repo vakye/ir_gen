@@ -57,19 +57,19 @@ typedef irg_u32 irg_b32;
 // NOTE(vak): IR
 ///////////////////////////////////////////////////////////
 
-typedef irg_u32 irg_node_id;
+typedef irg_u32 irg_inst_id;
 
-#define IRG_NIL_NODE_ID ((irg_node_id)(0))
+#define IRG_NIL_NODE_ID ((irg_inst_id)(0))
 
-IRG_FUNC irg_node_id irg_Integer(irg_usize Value);
+IRG_FUNC irg_inst_id irg_Integer(irg_usize Value);
 
-IRG_FUNC irg_node_id irg_Negate(irg_node_id Operand);
+IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand);
 
-IRG_FUNC irg_node_id irg_Add(irg_node_id Left, irg_node_id Right);
-IRG_FUNC irg_node_id irg_Sub(irg_node_id Left, irg_node_id Right);
-IRG_FUNC irg_node_id irg_Mul(irg_node_id Left, irg_node_id Right);
-IRG_FUNC irg_node_id irg_Div(irg_node_id Left, irg_node_id Right);
-IRG_FUNC irg_node_id irg_Mod(irg_node_id Left, irg_node_id Right);
+IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_Sub(irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_Mul(irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_Div(irg_inst_id Left, irg_inst_id Right);
+IRG_FUNC irg_inst_id irg_Mod(irg_inst_id Left, irg_inst_id Right);
 
 ///////////////////////////////////////////////////////////
 // NOTE(vak): Generation
@@ -81,7 +81,7 @@ typedef struct
     irg_usize Size;
 } irg_code;
 
-IRG_FUNC irg_code irg_GenerateX64(irg_node_id NodeID);
+IRG_FUNC irg_code irg_GenerateX64(irg_inst_id InstID);
 
 ///////////////////////////////////////////////////////////
 // NOTE(vak): Implementation
@@ -106,121 +106,121 @@ typedef enum
     IRG_NODE_KIND_MOD,
 
     IRG_NODE_KIND_COUNT,
-} irg_node_kind;
+} irg_inst_kind;
 
 typedef struct
 {
-    irg_node_kind Kind;
+    irg_inst_kind Kind;
 
     // NOTE(vak): Integer
         irg_usize IntegerValue;
 
     // NOTE(vak): Unary
-        irg_node_id Operand;
+        irg_inst_id Operand;
 
     // NOTE(vak): Binary
-        irg_node_id Left;
-        irg_node_id Right;
-} irg_node;
+        irg_inst_id Left;
+        irg_inst_id Right;
+} irg_inst;
 
 // TODO(vak): Custom allocator
-static irg_node irg_Nodes[4096] = {0};
-static irg_usize irg_NodeCount = 1;
+static irg_inst irg_Insts[4096] = {0};
+static irg_usize irg_InstCount = 1;
 
-IRG_FUNC irg_node* irg_GetNode(irg_node_id NodeID)
+IRG_FUNC irg_inst* irg_GetInst(irg_inst_id InstID)
 {
-    irg_b32 IsInRange = (NodeID < IRG_ARRAY_COUNT(irg_Nodes));
-    irg_node* Node = irg_Nodes + (NodeID * IsInRange);
+    irg_b32 IsInRange = (InstID < IRG_ARRAY_COUNT(irg_Insts));
+    irg_inst* Inst = irg_Insts + (InstID * IsInRange);
 
-    return (Node);
+    return (Inst);
 }
 
-IRG_FUNC irg_node_id irg_MakeNode(irg_node_kind Kind)
+IRG_FUNC irg_inst_id irg_MakeInst(irg_inst_kind Kind)
 {
-    IRG_ASSERT(irg_NodeCount < IRG_ARRAY_COUNT(irg_Nodes));
+    IRG_ASSERT(irg_InstCount < IRG_ARRAY_COUNT(irg_Insts));
 
-    irg_node_id NodeID = irg_NodeCount++;
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_InstCount++;
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    *Node = (irg_node){0};
-    Node->Kind = Kind;
+    *Inst = (irg_inst){0};
+    Inst->Kind = Kind;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Integer(irg_usize Value)
+IRG_FUNC irg_inst_id irg_Integer(irg_usize Value)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_INTEGER);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_INTEGER);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->IntegerValue = Value;
+    Inst->IntegerValue = Value;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Negate(irg_node_id Operand)
+IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_NEGATE);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_NEGATE);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->Operand = Operand;
+    Inst->Operand = Operand;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Add(irg_node_id Left, irg_node_id Right)
+IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_ADD);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_ADD);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->Left = Left;
-    Node->Right = Right;
+    Inst->Left = Left;
+    Inst->Right = Right;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Sub(irg_node_id Left, irg_node_id Right)
+IRG_FUNC irg_inst_id irg_Sub(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_SUB);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_SUB);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->Left = Left;
-    Node->Right = Right;
+    Inst->Left = Left;
+    Inst->Right = Right;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Mul(irg_node_id Left, irg_node_id Right)
+IRG_FUNC irg_inst_id irg_Mul(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_MUL);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_MUL);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->Left = Left;
-    Node->Right = Right;
+    Inst->Left = Left;
+    Inst->Right = Right;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Div(irg_node_id Left, irg_node_id Right)
+IRG_FUNC irg_inst_id irg_Div(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_DIV);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_DIV);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->Left = Left;
-    Node->Right = Right;
+    Inst->Left = Left;
+    Inst->Right = Right;
 
-    return (NodeID);
+    return (InstID);
 }
 
-IRG_FUNC irg_node_id irg_Mod(irg_node_id Left, irg_node_id Right)
+IRG_FUNC irg_inst_id irg_Mod(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_MOD);
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_MOD);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    Node->Left = Left;
-    Node->Right = Right;
+    Inst->Left = Left;
+    Inst->Right = Right;
 
-    return (NodeID);
+    return (InstID);
 }
 
 ///////////////////////////////////////////////////////////
@@ -257,21 +257,21 @@ IRG_FUNC void irg_U48(irg_u64 V) { irg_WriteBytes(&V, 6); }
 IRG_FUNC void irg_U56(irg_u64 V) { irg_WriteBytes(&V, 7); }
 IRG_FUNC void irg_U64(irg_u64 V) { irg_WriteBytes(&V, 8); }
 
-IRG_FUNC void irg_x64_Node(irg_node_id NodeID);
+IRG_FUNC void irg_x64_Inst(irg_inst_id InstID);
 
-IRG_FUNC void irg_x64_Unary(irg_node_id Operand)
+IRG_FUNC void irg_x64_Unary(irg_inst_id Operand)
 {
-    irg_x64_Node(Operand);
+    irg_x64_Inst(Operand);
 
     // NOTE(vak):
     // RAX = Operand
 }
 
-IRG_FUNC void irg_x64_Binary(irg_node_id Left, irg_node_id Right)
+IRG_FUNC void irg_x64_Binary(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_x64_Node(Right);
+    irg_x64_Inst(Right);
     irg_U8(0x50); // NOTE(vak): 50 push rax
-    irg_x64_Node(Left);
+    irg_x64_Inst(Left);
     irg_U8(0x59); // NOTE(vak): 59 pop rcx
 
     // NOTE(vak):
@@ -279,16 +279,16 @@ IRG_FUNC void irg_x64_Binary(irg_node_id Left, irg_node_id Right)
     // RCX = Right
 }
 
-IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
+IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
 {
-    if (NodeID == 0)
+    if (InstID == 0)
         return;
 
-    irg_node* Node = irg_GetNode(NodeID);
+    irg_inst* Inst = irg_GetInst(InstID);
 
-    switch (Node->Kind)
+    switch (Inst->Kind)
     {
-        default: IRG_ASSERT(!"Unimplemented node kind"); break;
+        default: IRG_ASSERT(!"Unimplemented inst kind"); break;
 
         case IRG_NODE_KIND_INTEGER:
         {
@@ -296,12 +296,12 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
             // 48 b8 [Imm64]    mov rax, Imm64
 
             irg_U16(0xb848);
-            irg_U64(Node->IntegerValue);
+            irg_U64(Inst->IntegerValue);
         } break;
 
         case IRG_NODE_KIND_NEGATE:
         {
-            irg_x64_Unary(Node->Operand);
+            irg_x64_Unary(Inst->Operand);
 
             // NOTE(vak):
             // 48 f7 d8 neg rax
@@ -310,7 +310,7 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
 
         case IRG_NODE_KIND_ADD:
         {
-            irg_x64_Binary(Node->Left, Node->Right);
+            irg_x64_Binary(Inst->Left, Inst->Right);
 
             // NOTE(vak):
             // 48 03 c1 add rax, rcx
@@ -319,7 +319,7 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
 
         case IRG_NODE_KIND_SUB:
         {
-            irg_x64_Binary(Node->Left, Node->Right);
+            irg_x64_Binary(Inst->Left, Inst->Right);
 
             // NOTE(vak):
             // 48 2b c1 sub rax, rcx
@@ -328,7 +328,7 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
 
         case IRG_NODE_KIND_MUL:
         {
-            irg_x64_Binary(Node->Left, Node->Right);
+            irg_x64_Binary(Inst->Left, Inst->Right);
 
             // NOTE(vak):
             // 48 0f af c1 imul rax, rcx
@@ -337,7 +337,7 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
 
         case IRG_NODE_KIND_DIV:
         {
-            irg_x64_Binary(Node->Left, Node->Right);
+            irg_x64_Binary(Inst->Left, Inst->Right);
 
             // NOTE(vak):
             // 48 99        cqo
@@ -347,7 +347,7 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
 
         case IRG_NODE_KIND_MOD:
         {
-            irg_x64_Binary(Node->Left, Node->Right);
+            irg_x64_Binary(Inst->Left, Inst->Right);
 
             // NOTE(vak):
             // 48 99        cqo
@@ -358,11 +358,11 @@ IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
     }
 }
 
-IRG_FUNC irg_code irg_GenerateX64(irg_node_id NodeID)
+IRG_FUNC irg_code irg_GenerateX64(irg_inst_id InstID)
 {
     irg_usize BeginOffset = irg_Writer.At;
 
-    irg_x64_Node(NodeID);
+    irg_x64_Inst(InstID);
 
     // NOTE(vak):
     // c3 ret
