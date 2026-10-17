@@ -59,7 +59,7 @@ typedef irg_u32 irg_b32;
 
 typedef irg_u32 irg_inst_id;
 
-#define IRG_NIL_NODE_ID ((irg_inst_id)(0))
+#define IRG_NIL_INST_ID ((irg_inst_id)(0))
 
 IRG_FUNC irg_inst_id irg_Integer(irg_usize Value);
 
@@ -95,17 +95,17 @@ IRG_FUNC irg_code irg_GenerateX64(irg_inst_id InstID);
 
 typedef enum
 {
-    IRG_NODE_KIND_NIL = 0,
+    IRG_INST_KIND_NIL = 0,
 
-    IRG_NODE_KIND_INTEGER,
-    IRG_NODE_KIND_NEGATE,
-    IRG_NODE_KIND_ADD,
-    IRG_NODE_KIND_SUB,
-    IRG_NODE_KIND_MUL,
-    IRG_NODE_KIND_DIV,
-    IRG_NODE_KIND_MOD,
+    IRG_INST_KIND_INTEGER,
+    IRG_INST_KIND_NEGATE,
+    IRG_INST_KIND_ADD,
+    IRG_INST_KIND_SUB,
+    IRG_INST_KIND_MUL,
+    IRG_INST_KIND_DIV,
+    IRG_INST_KIND_MOD,
 
-    IRG_NODE_KIND_COUNT,
+    IRG_INST_KIND_COUNT,
 } irg_inst_kind;
 
 typedef struct
@@ -150,7 +150,7 @@ IRG_FUNC irg_inst_id irg_MakeInst(irg_inst_kind Kind)
 
 IRG_FUNC irg_inst_id irg_Integer(irg_usize Value)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_INTEGER);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_INTEGER);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->IntegerValue = Value;
@@ -160,7 +160,7 @@ IRG_FUNC irg_inst_id irg_Integer(irg_usize Value)
 
 IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_NEGATE);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_NEGATE);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->Operand = Operand;
@@ -170,7 +170,7 @@ IRG_FUNC irg_inst_id irg_Negate(irg_inst_id Operand)
 
 IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_ADD);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_ADD);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->Left = Left;
@@ -181,7 +181,7 @@ IRG_FUNC irg_inst_id irg_Add(irg_inst_id Left, irg_inst_id Right)
 
 IRG_FUNC irg_inst_id irg_Sub(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_SUB);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_SUB);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->Left = Left;
@@ -192,7 +192,7 @@ IRG_FUNC irg_inst_id irg_Sub(irg_inst_id Left, irg_inst_id Right)
 
 IRG_FUNC irg_inst_id irg_Mul(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_MUL);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_MUL);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->Left = Left;
@@ -203,7 +203,7 @@ IRG_FUNC irg_inst_id irg_Mul(irg_inst_id Left, irg_inst_id Right)
 
 IRG_FUNC irg_inst_id irg_Div(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_DIV);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_DIV);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->Left = Left;
@@ -214,7 +214,7 @@ IRG_FUNC irg_inst_id irg_Div(irg_inst_id Left, irg_inst_id Right)
 
 IRG_FUNC irg_inst_id irg_Mod(irg_inst_id Left, irg_inst_id Right)
 {
-    irg_inst_id InstID = irg_MakeInst(IRG_NODE_KIND_MOD);
+    irg_inst_id InstID = irg_MakeInst(IRG_INST_KIND_MOD);
     irg_inst* Inst = irg_GetInst(InstID);
 
     Inst->Left = Left;
@@ -290,7 +290,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
     {
         default: IRG_ASSERT(!"Unimplemented inst kind"); break;
 
-        case IRG_NODE_KIND_INTEGER:
+        case IRG_INST_KIND_INTEGER:
         {
             // NOTE(vak):
             // 48 b8 [Imm64]    mov rax, Imm64
@@ -299,7 +299,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             irg_U64(Inst->IntegerValue);
         } break;
 
-        case IRG_NODE_KIND_NEGATE:
+        case IRG_INST_KIND_NEGATE:
         {
             irg_x64_Unary(Inst->Operand);
 
@@ -308,7 +308,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             irg_U24(0xd8f748);
         } break;
 
-        case IRG_NODE_KIND_ADD:
+        case IRG_INST_KIND_ADD:
         {
             irg_x64_Binary(Inst->Left, Inst->Right);
 
@@ -317,7 +317,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             irg_U24(0xc10348);
         } break;
 
-        case IRG_NODE_KIND_SUB:
+        case IRG_INST_KIND_SUB:
         {
             irg_x64_Binary(Inst->Left, Inst->Right);
 
@@ -326,7 +326,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             irg_U24(0xc12b48);
         } break;
 
-        case IRG_NODE_KIND_MUL:
+        case IRG_INST_KIND_MUL:
         {
             irg_x64_Binary(Inst->Left, Inst->Right);
 
@@ -335,7 +335,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             irg_U32(0xc1af0f48);
         } break;
 
-        case IRG_NODE_KIND_DIV:
+        case IRG_INST_KIND_DIV:
         {
             irg_x64_Binary(Inst->Left, Inst->Right);
 
@@ -345,7 +345,7 @@ IRG_FUNC void irg_x64_Inst(irg_inst_id InstID)
             irg_U40(0xf9f7489948);
         } break;
 
-        case IRG_NODE_KIND_MOD:
+        case IRG_INST_KIND_MOD:
         {
             irg_x64_Binary(Inst->Left, Inst->Right);
 
