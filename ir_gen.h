@@ -1,0 +1,385 @@
+
+#ifndef __IR_GEN_H__
+#define __IR_GEN_H__ 1
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Keywords
+///////////////////////////////////////////////////////////
+
+#if !defined(IRG_FUNC)
+    #define IRG_FUNC static
+#endif
+
+#if !defined(IRG_INVALID_CODE_PATH)
+    #define IRG_INVALID_CODE_PATH __builtin_trap()
+#endif
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Types
+///////////////////////////////////////////////////////////
+
+// NOTE(vak): Integers
+
+typedef signed char         irg_s8;
+typedef signed short        irg_s16;
+typedef signed int          irg_s32;
+typedef signed long long    irg_s64;
+
+typedef unsigned char       irg_u8;
+typedef unsigned short      irg_u16;
+typedef unsigned int        irg_u32;
+typedef unsigned long long  irg_u64;
+
+typedef irg_s64 irg_ssize;
+typedef irg_u64 irg_usize;
+
+// NOTE(vak): Booleans
+
+typedef irg_u8  irg_b8; 
+typedef irg_u32 irg_b32;
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Constants
+///////////////////////////////////////////////////////////
+
+#define IRG_TRUE    (1)
+#define IRG_FALSE   (0)
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Macros
+///////////////////////////////////////////////////////////
+
+#define IRG_ARRAY_COUNT(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+#define IRG_ASSERT(Expression) if (!(Expression)) IRG_INVALID_CODE_PATH
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): IR
+///////////////////////////////////////////////////////////
+
+typedef irg_u32 irg_node_id;
+
+#define IRG_NIL_NODE_ID ((irg_node_id)(0))
+
+IRG_FUNC irg_node_id irg_Integer(irg_usize Value);
+
+IRG_FUNC irg_node_id irg_Negate(irg_node_id Operand);
+
+IRG_FUNC irg_node_id irg_Add(irg_node_id Left, irg_node_id Right);
+IRG_FUNC irg_node_id irg_Sub(irg_node_id Left, irg_node_id Right);
+IRG_FUNC irg_node_id irg_Mul(irg_node_id Left, irg_node_id Right);
+IRG_FUNC irg_node_id irg_Div(irg_node_id Left, irg_node_id Right);
+IRG_FUNC irg_node_id irg_Mod(irg_node_id Left, irg_node_id Right);
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Generation
+///////////////////////////////////////////////////////////
+
+typedef struct
+{
+    void* Base;
+    irg_usize Size;
+} irg_code;
+
+IRG_FUNC irg_code irg_GenerateX64(irg_node_id NodeID);
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Implementation
+///////////////////////////////////////////////////////////
+
+#if defined(IR_GEN_IMPLEMENTATION)
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): IR
+///////////////////////////////////////////////////////////
+
+typedef enum
+{
+    IRG_NODE_KIND_NIL = 0,
+
+    IRG_NODE_KIND_INTEGER,
+    IRG_NODE_KIND_NEGATE,
+    IRG_NODE_KIND_ADD,
+    IRG_NODE_KIND_SUB,
+    IRG_NODE_KIND_MUL,
+    IRG_NODE_KIND_DIV,
+    IRG_NODE_KIND_MOD,
+
+    IRG_NODE_KIND_COUNT,
+} irg_node_kind;
+
+typedef struct
+{
+    irg_node_kind Kind;
+
+    // NOTE(vak): Integer
+        irg_usize IntegerValue;
+
+    // NOTE(vak): Unary
+        irg_node_id Operand;
+
+    // NOTE(vak): Binary
+        irg_node_id Left;
+        irg_node_id Right;
+} irg_node;
+
+// TODO(vak): Custom allocator
+static irg_node irg_Nodes[4096] = {0};
+static irg_usize irg_NodeCount = 1;
+
+IRG_FUNC irg_node* irg_GetNode(irg_node_id NodeID)
+{
+    irg_b32 IsInRange = (NodeID < IRG_ARRAY_COUNT(irg_Nodes));
+    irg_node* Node = irg_Nodes + (NodeID * IsInRange);
+
+    return (Node);
+}
+
+IRG_FUNC irg_node_id irg_MakeNode(irg_node_kind Kind)
+{
+    IRG_ASSERT(irg_NodeCount < IRG_ARRAY_COUNT(irg_Nodes));
+
+    irg_node_id NodeID = irg_NodeCount++;
+    irg_node* Node = irg_GetNode(NodeID);
+
+    *Node = (irg_node){0};
+    Node->Kind = Kind;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Integer(irg_usize Value)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_INTEGER);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->IntegerValue = Value;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Negate(irg_node_id Operand)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_NEGATE);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->Operand = Operand;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Add(irg_node_id Left, irg_node_id Right)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_ADD);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->Left = Left;
+    Node->Right = Right;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Sub(irg_node_id Left, irg_node_id Right)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_SUB);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->Left = Left;
+    Node->Right = Right;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Mul(irg_node_id Left, irg_node_id Right)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_MUL);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->Left = Left;
+    Node->Right = Right;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Div(irg_node_id Left, irg_node_id Right)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_DIV);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->Left = Left;
+    Node->Right = Right;
+
+    return (NodeID);
+}
+
+IRG_FUNC irg_node_id irg_Mod(irg_node_id Left, irg_node_id Right)
+{
+    irg_node_id NodeID = irg_MakeNode(IRG_NODE_KIND_MOD);
+    irg_node* Node = irg_GetNode(NodeID);
+
+    Node->Left = Left;
+    Node->Right = Right;
+
+    return (NodeID);
+}
+
+///////////////////////////////////////////////////////////
+// NOTE(vak): Generation
+///////////////////////////////////////////////////////////
+
+typedef struct
+{
+    irg_usize At;
+    irg_u8    Buffer[65536];
+} irg_writer;
+
+static irg_writer irg_Writer = {0};
+
+IRG_FUNC void irg_WriteBytes(void* Bytes, irg_usize Size)
+{
+    IRG_ASSERT(irg_Writer.At + Size <= sizeof(irg_Writer.Buffer));
+
+    irg_u8* Dest = irg_Writer.Buffer + irg_Writer.At;
+    irg_u8* Source = (irg_u8*)Bytes;
+
+    for (irg_usize Index = 0; Index < Size; Index++)
+        Dest[Index] = Source[Index];
+
+    irg_Writer.At += Size;
+}
+
+IRG_FUNC void irg_U8 (irg_u8  V) { irg_WriteBytes(&V, 1); }
+IRG_FUNC void irg_U16(irg_u16 V) { irg_WriteBytes(&V, 2); }
+IRG_FUNC void irg_U24(irg_u32 V) { irg_WriteBytes(&V, 3); }
+IRG_FUNC void irg_U32(irg_u32 V) { irg_WriteBytes(&V, 4); }
+IRG_FUNC void irg_U40(irg_u64 V) { irg_WriteBytes(&V, 5); }
+IRG_FUNC void irg_U48(irg_u64 V) { irg_WriteBytes(&V, 6); }
+IRG_FUNC void irg_U56(irg_u64 V) { irg_WriteBytes(&V, 7); }
+IRG_FUNC void irg_U64(irg_u64 V) { irg_WriteBytes(&V, 8); }
+
+IRG_FUNC void irg_x64_Node(irg_node_id NodeID);
+
+IRG_FUNC void irg_x64_Unary(irg_node_id Operand)
+{
+    irg_x64_Node(Operand);
+
+    // NOTE(vak):
+    // RAX = Operand
+}
+
+IRG_FUNC void irg_x64_Binary(irg_node_id Left, irg_node_id Right)
+{
+    irg_x64_Node(Right);
+    irg_U8(0x50); // NOTE(vak): 50 push rax
+    irg_x64_Node(Left);
+    irg_U8(0x59); // NOTE(vak): 59 pop rcx
+
+    // NOTE(vak):
+    // RAX = Left
+    // RCX = Right
+}
+
+IRG_FUNC void irg_x64_Node(irg_node_id NodeID)
+{
+    if (NodeID == 0)
+        return;
+
+    irg_node* Node = irg_GetNode(NodeID);
+
+    switch (Node->Kind)
+    {
+        default: IRG_ASSERT(!"Unimplemented node kind"); break;
+
+        case IRG_NODE_KIND_INTEGER:
+        {
+            // NOTE(vak):
+            // 48 b8 [Imm64]    mov rax, Imm64
+
+            irg_U16(0xb848);
+            irg_U64(Node->IntegerValue);
+        } break;
+
+        case IRG_NODE_KIND_NEGATE:
+        {
+            irg_x64_Unary(Node->Operand);
+
+            // NOTE(vak):
+            // 48 f7 d8 neg rax
+            irg_U24(0xd8f748);
+        } break;
+
+        case IRG_NODE_KIND_ADD:
+        {
+            irg_x64_Binary(Node->Left, Node->Right);
+
+            // NOTE(vak):
+            // 48 03 c1 add rax, rcx
+            irg_U24(0xc10348);
+        } break;
+
+        case IRG_NODE_KIND_SUB:
+        {
+            irg_x64_Binary(Node->Left, Node->Right);
+
+            // NOTE(vak):
+            // 48 2b c1 sub rax, rcx
+            irg_U24(0xc12b48);
+        } break;
+
+        case IRG_NODE_KIND_MUL:
+        {
+            irg_x64_Binary(Node->Left, Node->Right);
+
+            // NOTE(vak):
+            // 48 0f af c1 imul rax, rcx
+            irg_U32(0xc1af0f48);
+        } break;
+
+        case IRG_NODE_KIND_DIV:
+        {
+            irg_x64_Binary(Node->Left, Node->Right);
+
+            // NOTE(vak):
+            // 48 99        cqo
+            // 48 f7 f9     idiv rcx
+            irg_U40(0xf9f7489948);
+        } break;
+
+        case IRG_NODE_KIND_MOD:
+        {
+            irg_x64_Binary(Node->Left, Node->Right);
+
+            // NOTE(vak):
+            // 48 99        cqo
+            // 48 f7 f9     idiv rcx
+            // 48 8b c2     mov rax, rdx
+            irg_U64(0xc28b48f9f7489948);
+        } break;
+    }
+}
+
+IRG_FUNC irg_code irg_GenerateX64(irg_node_id NodeID)
+{
+    irg_usize BeginOffset = irg_Writer.At;
+
+    irg_x64_Node(NodeID);
+
+    // NOTE(vak):
+    // c3 ret
+    irg_U8(0xc3);
+
+    irg_usize EndOffset = irg_Writer.At;
+
+    irg_code Result =
+    {
+        .Base = irg_Writer.Buffer + BeginOffset,
+        .Size = EndOffset - BeginOffset,
+    };
+
+    return (Result);
+}
+
+#endif // NOTE(vak): IR_GEN_IMPLEMENTATION
+
+#endif // NOTE(VAK): __IR_GEN_H__
+
